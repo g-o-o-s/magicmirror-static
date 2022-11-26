@@ -1,0 +1,56 @@
+version: "2.4"
+
+services:
+  magicmirror:
+    image: docker.io/karsten13/magicmirror:latest
+    restart: unless-stopped
+    environment:
+     - TZ=America/New_York
+    volumes:
+      - ./config:/opt/magic_mirror/config:rw
+      - ./modules:/opt/magic_mirror/modules:rw
+      - ./css:/opt/magic_mirror/css:rw
+    command: 
+      - npm
+      - run
+      - server
+    networks:
+      magicmirror-internal: {}
+
+  magicmirror-puppeteer:
+    image: ghcr.io/puppeteer/puppeteer:latest
+    cap_add: 
+      - SYS_ADMIN
+    restart: unless-stopped
+    working_dir: /home/pptruser/
+    environment:
+     - TZ=America/New_York
+    command:
+      - node
+      - screenshot.js
+    volumes:
+      - ./static:/static:rw
+      - ./screenshot.js:/home/pptruser/screenshot.js:ro
+    networks:
+      magicmirror-internal: {}
+
+  magicmirror-nginx:
+    image: docker.io/nginx:latest
+    restart: unless-stopped
+    volumes:
+      - /dev/null:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./static:/opt/wwwroot:ro
+    networks:
+      - traefik-backend
+    #ports:
+    #  - 80:80
+
+# if you aren't putting traefik in front of this,
+# remove the "traefik-backend" references below and above
+networks:
+  magicmirror-internal:
+    name: magicmirror-internal
+    driver: bridge
+  traefik-backend:
+    external: true
